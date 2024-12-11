@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: django-app
+  namespace: db-devlaba1
+  labels:
+    app: django-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: django-app
+  template:
+    metadata:
+      labels:
+        app: django-app
+    spec:
+      containers:
+        - name: django-container
+          image: ottepkot/financeapp:latest
+          ports:
+            - containerPort: 8000
+          env:
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: django-secrets
+                  key: SECRET_KEY
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: django-secrets
+                  key: DB_USER
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: django-secrets
+                  key: DB_PASSWORD
+            - name: DB_HOST
+              value: devlaba-db-service.db-devlaba1.svc.cluster.local
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              value: devlaba-db
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+          lifecycle:
+            postStart:
+              exec:
+                command: [ "python", "manage.py", "migrate" ]
+          volumeMounts:
+            - name: static-volume
+              mountPath: /app/static
+      volumes:
+        - name: static-volume
+          persistentVolumeClaim:
+            claimName: static-pvc
